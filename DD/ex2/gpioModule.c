@@ -53,6 +53,7 @@ static int gpio_close(struct inode *inod, struct file *fil)
 	return 0;
 }
 
+//우리 생각의 read가 아니라 write해주는 거다. 
 static ssize_t gpio_read(struct file *fil, char *buff, size_t len, loff_t *off)
 {
 	int count;
@@ -61,7 +62,7 @@ static ssize_t gpio_read(struct file *fil, char *buff, size_t len, loff_t *off)
 	if(gpio_get_value(GPIO_LED))
 		msg[0]='1';
 	else
-		msg[1]='0';
+		msg[0]='0';
 
 	// 이 데이터가 커널에서 온 데이터임을 표기한다.
 	strcat(msg," from kernel");
@@ -73,7 +74,6 @@ static ssize_t gpio_read(struct file *fil, char *buff, size_t len, loff_t *off)
 	
 	return count;	
 }
-
 
 static ssize_t gpio_write(struct file *fil, const char *buff, size_t len, loff_t *off)
 {
