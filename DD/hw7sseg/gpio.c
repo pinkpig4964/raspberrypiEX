@@ -14,9 +14,7 @@ void signal_handler(int signum)
 	else
 	{
 		timeValue++;
-		printf("time:%d",timeValue/100);
-		printf("%d",((timeValue%100)/10));
-		printf(".%d\r",timeValue%10);
+		printf("%d%d.%d%d\r",timeValue/1000,timeValue/100,((timeValue%100)/10),timeValue%10);
 		fflush(stdout);
 	}
 }

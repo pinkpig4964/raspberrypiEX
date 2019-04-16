@@ -207,7 +207,7 @@ enum hrtimer_restart myStopwatch_callback(struct hrtimer *timer)
 	flag2 = 0;
 	count++;
 	seg_s++;
-	count_dev = ((seg_s %100)/10);
+	count_dev = (seg_s /100);
 	pr_info("stopwatch Time=%d\n", count);
 	if (count_dev ==0)
 	    digital_0();
@@ -237,7 +237,7 @@ enum hrtimer_restart myStopwatch_callback(struct hrtimer *timer)
     {
 	count++;
 	seg_s++;
-	count_dev = ((seg_s %100)/10);
+	count_dev = (seg_s/100);
 	//틀리면 여기 빼기//
 	if (count_dev ==0)
 	    digital_0();
