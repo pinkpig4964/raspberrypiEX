@@ -14,7 +14,9 @@ void signal_handler(int signum)
 	else
 	{
 		timeValue++;
-		printf("time:%d\r",timeValue);
+		printf("time:%d",timeValue/100);
+		printf("%d",((timeValue%100)/10));
+		printf(".%d\r",timeValue%10);
 		fflush(stdout);
 	}
 }
@@ -48,7 +50,7 @@ int main(int argc, char** argv)
 	{
 		printf("Error write()\n");
 	}
-	
+
 	while(1);
 
 	close(fd);
