@@ -8,15 +8,8 @@
 
 void signal_handler(int signum)
 {
-	static int timeValue=0;
-	if(signum==SIGUSR1)			printf("Stopwatch Start!\n");
-	else if(signum== SIGUSR2)	printf("Stopwatch Stop!\n");
-	else
-	{
-		timeValue++;
-		printf("time:%d\r",timeValue);
-		fflush(stdout);
-	}
+	if(signum==SIGUSR1)			printf("SIGUSR1\n");
+	else if(signum== SIGUSR2)	printf("SIGUSR2\n");
 }
 
 
@@ -30,7 +23,6 @@ int main(int argc, char** argv)
 
 	signal(SIGUSR1, signal_handler);
 	signal(SIGUSR2, signal_handler);
-	signal(SIGIO, signal_handler);
 
 	sprintf(buf, "/dev/%s", GPIO_DEVICE);
 

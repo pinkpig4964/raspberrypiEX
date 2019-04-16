@@ -40,26 +40,72 @@ struct device *dev;
 // switch 2개의 채터링 방지를 위한 타이머 선언
 static struct hrtimer hr_timer;
 
+// 10ms를 측정하기 위한 타이머 선언
+static struct hrtimer stopwatch;
+
+// hrTimer를 위한 변수
+ktime_t ktime, stime;
+
+
 enum hrtimer_restart myTimer_callback(struct hrtimer *timer)
 {
 	if (flag1)
 		flag1 = 0;
-	else if (flag2)
-		flag2 = 0;
 
 	printk(KERN_INFO "myTimer_callback\n");
 
 	return HRTIMER_NORESTART;
 }
 
+enum hrtimer_restart myStopwatch_callback(struct hrtimer *timer)
+{
+	ktime_t currtime, interval;
+	static int count = 0;
+	unsigned long delay_in_ms = 100L;	//100ms
+	static struct siginfo sinfo1;
+
+	// USER프로그램에 SIGIO를 전달한다.
+	memset(&sinfo1, 0, sizeof(struct siginfo));
+	sinfo1.si_signo = SIGIO;
+	sinfo1.si_code = SI_USER;
+	if (task != NULL)
+	{
+		//kill()와 동일한 kernel함수
+		send_sig_info(SIGIO, &sinfo1, task);
+	}
+	else
+	{
+		printk(KERN_INFO "Error: USER PID\n");
+	}
+
+	//sw2가 입력되면 stopwatchTimer종료
+	if (flag2)
+	{
+		flag2 = 0;
+		pr_info("stopwatch Time=%d\n", count);
+		count = 0;
+		
+		return HRTIMER_NORESTART;
+	}
+	else
+	{
+		count++;
+
+		currtime = ktime_get();
+		interval = ktime_set(0, MS_TO_NS(delay_in_ms));
+		hrtimer_forward(timer, currtime, interval);
+		return HRTIMER_RESTART;
+	}
+
+}
+
 //switch 2개를 인터럽트 소스로 사용
 static irqreturn_t isr_func(int irq, void *data)
 {
-	// hrTimer를 위한 변수
-	ktime_t ktime;
 	//unsigned long delay_in_ms = 50L;	//50ms
 	//MS_TO_NS(delay_in_ms)
-	unsigned long expireTime = 50000000L; //50ms unit:ns
+	unsigned long expireTime = 50000000L;	 //50ms unit:ns
+	unsigned long stopwatchTime = 100000000L; //100ms unit:ns
 
 	static int count=0;
 	
@@ -71,15 +117,21 @@ static irqreturn_t isr_func(int irq, void *data)
 		if (!flag1)
 		{
 			flag1 = 1;
+			count = 0;
+			//-------------------------------------------------------------------
 
+			printk(KERN_INFO "start switch\n");
 			//kitme_set(설정초,설정나노초);
 			ktime = ktime_set(0, expireTime);
-			//hrtimer_init(타이머구조체 주소값, 등록할 타이머값,상대시간으로설정)
-			hrtimer_init(&hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-			hr_timer.function = &myTimer_callback;
-			printk(KERN_INFO "startTime\n");
 			hrtimer_start(&hr_timer, ktime, HRTIMER_MODE_REL);
+			//-------------------------------------------------------------------
 			
+			//-------------------------------------------------------------------
+			printk(KERN_INFO "stopWatch is start\n");
+			//kitme_set(설정초,설정나노초);
+			stime = ktime_set(0, stopwatchTime);
+			hrtimer_start(&stopwatch, stime, HRTIMER_MODE_REL);
+			//-------------------------------------------------------------------
 			//스위치가 눌렸을 때 응용프로그램에게 SIGUSR1를 전달한다.
 			//sinfo구조체를 0으로 초기화한다.
 			memset(&sinfo, 0, sizeof(struct siginfo));
@@ -104,14 +156,10 @@ static irqreturn_t isr_func(int irq, void *data)
 		{
 			flag2 = 1;
 
-			//kitme_set(설정초,설정나노초);
+			printk(KERN_INFO "stop switch\n");
 			ktime = ktime_set(0, expireTime);
-			//hrtimer_init(타이머구조체 주소값, 등록할 타이머값,상대시간으로설정)
-			hrtimer_init(&hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-			hr_timer.function = &myTimer_callback;
-			printk(KERN_INFO "startTime\n");
 			hrtimer_start(&hr_timer, ktime, HRTIMER_MODE_REL);
-
+			
 			//스위치가 눌렸을 때 응용프로그램에게 SIGUSR1를 전달한다.
 			//sinfo구조체를 0으로 초기화한다.
 			memset(&sinfo, 0, sizeof(struct siginfo));
@@ -183,6 +231,7 @@ static ssize_t gpio_write(struct file *fil, const char *buff, size_t len, loff_t
 static struct file_operations gpio_fops = {
 	.owner = THIS_MODULE,
 	.write = gpio_write,
+	//.read = gpio_read,
 	.open = gpio_open,
 	.release = gpio_close,
 };
@@ -274,7 +323,15 @@ static int __init initModule(void)
 		printk(KERN_INFO "Error request_irq\n");
 		return -1;
 	}
+
+	// 채터링 방지 타이머 생성 및 초기화
+	hrtimer_init(&hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hr_timer.function = &myTimer_callback;
 	   	 
+	// stopwatch 타이머 생성 및 초기화
+	hrtimer_init(&stopwatch, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	stopwatch.function = &myStopwatch_callback;
+
 	return 0;
 }
 
@@ -299,6 +356,10 @@ static void __exit cleanupModule(void)
 	//gpio_request()에서 받아온 사용권한을 반납한다.
 	gpio_free(GPIO_SW1);
 	gpio_free(GPIO_SW2);
+
+	//hr-Timer 취소
+	hrtimer_cancel(&stopwatch);
+	hrtimer_cancel(&hr_timer);
 	
 	printk("Good-bye!\n");
 }
@@ -313,4 +374,3 @@ module_exit(cleanupModule);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("GPIO Driver Module");
 MODULE_AUTHOR("Woojin Park");
-
