@@ -184,7 +184,7 @@ enum hrtimer_restart myStopwatch_callback(struct hrtimer *timer)
 {
     ktime_t currtime, interval;
     static int count = 0;
-    unsigned long delay_in_ms = 100L;	//100ms
+    unsigned long delay_in_ms = 10L;	//100ms
     static struct siginfo sinfo1;
     static int count_dev=0;
     // USER프로그램에 SIGIO를 전달한다.
@@ -207,7 +207,7 @@ enum hrtimer_restart myStopwatch_callback(struct hrtimer *timer)
 	flag2 = 0;
 	count++;
 	seg_s++;
-	count_dev = (seg_s /100);
+	count_dev = (seg_s /100)%10;
 	pr_info("stopwatch Time=%d\n", count);
 	if (count_dev ==0)
 	    digital_0();
@@ -237,7 +237,7 @@ enum hrtimer_restart myStopwatch_callback(struct hrtimer *timer)
     {
 	count++;
 	seg_s++;
-	count_dev = (seg_s/100);
+	count_dev = (seg_s/100)%10;
 	//틀리면 여기 빼기//
 	if (count_dev ==0)
 	    digital_0();
